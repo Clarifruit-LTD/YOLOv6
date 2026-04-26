@@ -79,6 +79,8 @@ class TaskAlignedAssigner(nn.Module):
             pos_overlaps = (overlaps * mask_pos).max(axis=-1, keepdim=True)[0]
             norm_align_metric = (align_metric * pos_overlaps / (pos_align_metrics + self.eps)).max(-2)[0].unsqueeze(-1)
             target_scores = target_scores * norm_align_metric
+            target_scores = torch.clamp(target_scores, min=0, max=1)
+            target_scores = torch.nan_to_num(target_scores, nan=0.0)
 
             # append
             target_labels_lst.append(target_labels)

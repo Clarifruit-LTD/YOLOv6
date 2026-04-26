@@ -7,6 +7,7 @@ import yaml
 import os.path as osp
 from pathlib import Path
 import torch
+torch.backends.cudnn.benchmark = True
 import torch.distributed as dist
 import sys
 import datetime

@@ -122,7 +122,10 @@ class TrainValDataset(Dataset):
 
         if mem_required > mem.available:
             self.cache_ram = False
-            LOGGER.warning("Not enough RAM to cache images, caching is disabled.")
+            LOGGER.warning("Not enough RAM to cache images, caching is disabled."
+                           f"{mem_required / gb:.1f}GB RAM required, "
+                           f"{mem.available / gb:.1f}/{mem.total / gb:.1f}GB RAM available, "
+                           )
         else:
             LOGGER.warning(
                 f"{mem_required / gb:.1f}GB RAM required, "

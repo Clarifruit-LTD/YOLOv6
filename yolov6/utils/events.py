@@ -35,6 +35,21 @@ def write_tblog(tblogger, epoch, results, lrs, losses):
     tblogger.add_scalar("val/mAP@0.5", results[0], epoch + 1)
     tblogger.add_scalar("val/mAP@0.50:0.95", results[1], epoch + 1)
 
+    if len(results) >= 11:
+        # Fruit specific graphs
+        tblogger.add_scalar("val_fruit/Precision", results[2], epoch + 1)
+        tblogger.add_scalar("val_fruit/Recall", results[3], epoch + 1)
+        tblogger.add_scalar("val_fruit/F1", results[4], epoch + 1)
+        tblogger.add_scalar("val_fruit/Best_Conf_Threshold", results[9], epoch + 1)
+
+        # Rest of the labels graphs
+        tblogger.add_scalar("val_rest/Precision", results[5], epoch + 1)
+        tblogger.add_scalar("val_rest/Recall", results[6], epoch + 1)
+        tblogger.add_scalar("val_rest/F1", results[7], epoch + 1)
+        tblogger.add_scalar("val_rest/Best_Conf_Threshold", results[10], epoch + 1)
+
+        tblogger.add_scalar("val/Best_Conf_Threshold", results[8], epoch + 1)
+
     tblogger.add_scalar("train/iou_loss", losses[0], epoch + 1)
     tblogger.add_scalar("train/dist_focalloss", losses[1], epoch + 1)
     tblogger.add_scalar("train/cls_loss", losses[2], epoch + 1)
