@@ -265,7 +265,7 @@ class Evaler:
                         'Best_Conf_Threshold': c_best_conf
                     }
 
-                self.pr_metric_result = (map50, map, fruit_p, fruit_r, fruit_f1, rest_p, rest_r, rest_f1, best_conf_threshold, fruit_best_conf, rest_best_conf, class_f1_dict)
+                self.pr_metric_result = (map50, map, fruit_p, fruit_r, fruit_f1, rest_p, rest_r, rest_f1, best_conf_threshold, fruit_best_conf, rest_best_conf, class_metrics_dict)
 
                 # Print results per class
                 if self.verbose and model.nc > 1:

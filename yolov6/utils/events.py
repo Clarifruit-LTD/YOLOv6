@@ -51,9 +51,12 @@ def write_tblog(tblogger, epoch, results, lrs, losses):
         tblogger.add_scalar("val/Best_Conf_Threshold", results[8], epoch + 1)
 
     if len(results) >= 12:
-        class_f1_dict = results[11]
-        for class_name, f1_score in class_f1_dict.items():
-            tblogger.add_scalar(f"val_class_f1/{class_name}", f1_score, epoch + 1)
+        class_metrics_dict = results[11]
+        for class_name, metrics in class_metrics_dict.items():
+            tblogger.add_scalar(f"val_{class_name}/Precision", metrics['Precision'], epoch + 1)
+            tblogger.add_scalar(f"val_{class_name}/Recall", metrics['Recall'], epoch + 1)
+            tblogger.add_scalar(f"val_{class_name}/F1", metrics['F1'], epoch + 1)
+            tblogger.add_scalar(f"val_{class_name}/Best_Conf_Threshold", metrics['Best_Conf_Threshold'], epoch + 1)
 
     tblogger.add_scalar("train/iou_loss", losses[0], epoch + 1)
     tblogger.add_scalar("train/dist_focalloss", losses[1], epoch + 1)
