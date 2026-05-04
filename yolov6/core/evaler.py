@@ -247,7 +247,6 @@ class Evaler:
                             rest_f1 = f1[rest_mask, AP50_F1_max_idx].mean()
                         else:
                             rest_p, rest_r, rest_f1 = 0.0, 0.0, 0.0
-                class_f1_dict = {model.names[c]: f1[i, AP50_F1_max_idx] for i, c in enumerate(ap_class)}
                 class_metrics_dict = {}
                 for i, c in enumerate(ap_class):
                     class_name = model.names[c]
