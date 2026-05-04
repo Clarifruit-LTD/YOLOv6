@@ -247,8 +247,25 @@ class Evaler:
                             rest_f1 = f1[rest_mask, AP50_F1_max_idx].mean()
                         else:
                             rest_p, rest_r, rest_f1 = 0.0, 0.0, 0.0
+                class_f1_dict = {model.names[c]: f1[i, AP50_F1_max_idx] for i, c in enumerate(ap_class)}
+                class_metrics_dict = {}
+                for i, c in enumerate(ap_class):
+                    class_name = model.names[c]
 
-                self.pr_metric_result = (map50, map, fruit_p, fruit_r, fruit_f1, rest_p, rest_r, rest_f1, best_conf_threshold, fruit_best_conf, rest_best_conf)
+                    # Find the specific best confidence threshold for this class
+                    c_f1_curve = f1[i, :]
+                    c_max_idx = len(c_f1_curve) - c_f1_curve[::-1].argmax() - 1
+                    c_best_conf = c_max_idx / 1000.0
+
+                    # Use the class's OWN optimal index (c_max_idx) instead of the global one
+                    class_metrics_dict[class_name] = {
+                        'Precision': p[i, c_max_idx],
+                        'Recall': r[i, c_max_idx],
+                        'F1': f1[i, c_max_idx],
+                        'Best_Conf_Threshold': c_best_conf
+                    }
+
+                self.pr_metric_result = (map50, map, fruit_p, fruit_r, fruit_f1, rest_p, rest_r, rest_f1, best_conf_threshold, fruit_best_conf, rest_best_conf, class_f1_dict)
 
                 # Print results per class
                 if self.verbose and model.nc > 1:
@@ -260,7 +277,7 @@ class Evaler:
                     confusion_matrix.plot(save_dir=self.save_dir, names=list(model.names))
             else:
                 LOGGER.info("Calculate metric failed, might check dataset.")
-                self.pr_metric_result = (0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+                self.pr_metric_result = (0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, {})
 
         return pred_results, vis_outputs, vis_paths
 
@@ -356,8 +373,8 @@ class Evaler:
                 LOGGER.info(f"Results saved to {self.save_dir}")
 
             if self.do_pr_metric:
-                _, _, fruit_p, fruit_r, fruit_f1, rest_p, rest_r, rest_f1, best_conf, fruit_best_conf, rest_best_conf = self.pr_metric_result
-                return (map50, map, fruit_p, fruit_r, fruit_f1, rest_p, rest_r, rest_f1, best_conf, fruit_best_conf, rest_best_conf)
+                _, _, fruit_p, fruit_r, fruit_f1, rest_p, rest_r, rest_f1, best_conf, fruit_best_conf, rest_best_conf, class_f1_dict = self.pr_metric_result
+                return (map50, map, fruit_p, fruit_r, fruit_f1, rest_p, rest_r, rest_f1, best_conf, fruit_best_conf, rest_best_conf, class_f1_dict)
 
             return (map50, map)
         return (0.0, 0.0)
