@@ -34,6 +34,7 @@ def write_tblog(tblogger, epoch, results, lrs, losses):
     """Display mAP and loss information to log."""
     tblogger.add_scalar("val/mAP@0.5", results[0], epoch + 1)
     tblogger.add_scalar("val/mAP@0.50:0.95", results[1], epoch + 1)
+    tblogger.add_scalar("val/Best_Conf_Threshold", results[8], epoch + 1)
 
     if len(results) >= 11:
         # Fruit specific graphs
@@ -43,12 +44,10 @@ def write_tblog(tblogger, epoch, results, lrs, losses):
         tblogger.add_scalar("val_fruit/Best_Conf_Threshold", results[9], epoch + 1)
 
         # Rest of the labels graphs
-        tblogger.add_scalar("val_rest/Precision", results[5], epoch + 1)
-        tblogger.add_scalar("val_rest/Recall", results[6], epoch + 1)
-        tblogger.add_scalar("val_rest/F1", results[7], epoch + 1)
-        tblogger.add_scalar("val_rest/Best_Conf_Threshold", results[10], epoch + 1)
-
-        tblogger.add_scalar("val/Best_Conf_Threshold", results[8], epoch + 1)
+        tblogger.add_scalar("val_all_defects/Precision", results[5], epoch + 1)
+        tblogger.add_scalar("val_all_defects/Recall", results[6], epoch + 1)
+        tblogger.add_scalar("val_all_defects/F1", results[7], epoch + 1)
+        tblogger.add_scalar("val_all_defects/Best_Conf_Threshold", results[10], epoch + 1)
 
     if len(results) >= 12:
         class_metrics_dict = results[11]
