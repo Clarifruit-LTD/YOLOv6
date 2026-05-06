@@ -34,6 +34,28 @@ def write_tblog(tblogger, epoch, results, lrs, losses):
     """Display mAP and loss information to log."""
     tblogger.add_scalar("val/mAP@0.5", results[0], epoch + 1)
     tblogger.add_scalar("val/mAP@0.50:0.95", results[1], epoch + 1)
+    tblogger.add_scalar("val/Best_Conf_Threshold", results[8], epoch + 1)
+
+    if len(results) >= 11:
+        # Fruit specific graphs
+        tblogger.add_scalar("val_fruit/Precision", results[2], epoch + 1)
+        tblogger.add_scalar("val_fruit/Recall", results[3], epoch + 1)
+        tblogger.add_scalar("val_fruit/F1", results[4], epoch + 1)
+        tblogger.add_scalar("val_fruit/Best_Conf_Threshold", results[9], epoch + 1)
+
+        # Rest of the labels graphs
+        tblogger.add_scalar("val_all_defects/Precision", results[5], epoch + 1)
+        tblogger.add_scalar("val_all_defects/Recall", results[6], epoch + 1)
+        tblogger.add_scalar("val_all_defects/F1", results[7], epoch + 1)
+        tblogger.add_scalar("val_all_defects/Best_Conf_Threshold", results[10], epoch + 1)
+
+    if len(results) >= 12:
+        class_metrics_dict = results[11]
+        for class_name, metrics in class_metrics_dict.items():
+            tblogger.add_scalar(f"val_{class_name}/Precision", metrics['Precision'], epoch + 1)
+            tblogger.add_scalar(f"val_{class_name}/Recall", metrics['Recall'], epoch + 1)
+            tblogger.add_scalar(f"val_{class_name}/F1", metrics['F1'], epoch + 1)
+            tblogger.add_scalar(f"val_{class_name}/Best_Conf_Threshold", metrics['Best_Conf_Threshold'], epoch + 1)
 
     tblogger.add_scalar("train/iou_loss", losses[0], epoch + 1)
     tblogger.add_scalar("train/dist_focalloss", losses[1], epoch + 1)
