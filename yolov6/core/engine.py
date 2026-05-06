@@ -43,7 +43,7 @@ class Trainer:
         self.max_epoch = args.epochs
 
         if args.resume:
-            self.ckpt = torch.load(args.resume, map_location='cpu')
+            self.ckpt = torch.load(args.resume, map_location='cpu', weights_only=False)
 
         self.rank = args.rank
         self.local_rank = args.local_rank
@@ -225,13 +225,14 @@ class Trainer:
                             batch_size=self.batch_size // self.world_size * 2,
                             img_size=self.img_size,
                             model=self.ema.ema if self.args.calib is False else self.model,
-                            conf_thres=0.03,
+                            conf_thres=0.1,
                             dataloader=self.val_loader,
                             save_dir=self.save_dir,
                             task='train',
                             specific_shape=self.specific_shape,
                             height=self.height,
-                            width=self.width
+                            width=self.width,
+                            do_pr_metric=True
                             )
         else:
             def get_cfg_value(cfg_dict, value_str, default_value):
@@ -247,7 +248,7 @@ class Trainer:
                             batch_size=get_cfg_value(self.cfg.eval_params, "batch_size", self.batch_size // self.world_size * 2),
                             img_size=eval_img_size,
                             model=self.ema.ema if self.args.calib is False else self.model,
-                            conf_thres=get_cfg_value(self.cfg.eval_params, "conf_thres", 0.03),
+                            conf_thres=get_cfg_value(self.cfg.eval_params, "conf_thres", 0.1),
                             dataloader=self.val_loader,
                             save_dir=self.save_dir,
                             task='train',
@@ -255,7 +256,8 @@ class Trainer:
                             infer_on_rect=get_cfg_value(self.cfg.eval_params, "infer_on_rect", False),
                             verbose=get_cfg_value(self.cfg.eval_params, "verbose", False),
                             do_coco_metric=get_cfg_value(self.cfg.eval_params, "do_coco_metric", True),
-                            do_pr_metric=get_cfg_value(self.cfg.eval_params, "do_pr_metric", False),
+                            # do_pr_metric=get_cfg_value(self.cfg.eval_params, "do_pr_metric", True),
+                            do_pr_metric=True,
                             plot_curve=get_cfg_value(self.cfg.eval_params, "plot_curve", False),
                             plot_confusion_matrix=get_cfg_value(self.cfg.eval_params, "plot_confusion_matrix", False),
                             specific_shape=self.specific_shape,
@@ -263,8 +265,12 @@ class Trainer:
                             width=self.width
                             )
 
-        LOGGER.info(f"Epoch: {self.epoch} | mAP@0.5: {results[0]} | mAP@0.50:0.95: {results[1]}")
-        self.evaluate_results = results[:2]
+        if len(results) >= 11:
+            LOGGER.info(f"Epoch: {self.epoch} | mAP@0.5: {results[0]:.4f} | Overall_Conf: {results[8]:.3f} "
+                        f"| Fruit_Conf: {results[9]:.3f} | Rest_Conf: {results[10]:.3f}")
+        else:
+            LOGGER.info(f"Epoch: {self.epoch} | mAP@0.5: {results[0]:.4f} | mAP@0.50:0.95: {results[1]:.4f}")
+        self.evaluate_results = results
         # plot validation predictions
         self.plot_val_pred(vis_outputs, vis_paths)
 
@@ -279,7 +285,7 @@ class Trainer:
 
         self.best_ap, self.ap = 0.0, 0.0
         self.best_stop_strong_aug_ap = 0.0
-        self.evaluate_results = (0, 0) # AP50, AP50_95
+        self.evaluate_results = (0, 0, 0, 0, 0, 0)
         # resume results
         if hasattr(self, "ckpt"):
             self.evaluate_results = self.ckpt['results']

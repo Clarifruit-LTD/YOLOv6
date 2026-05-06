@@ -33,7 +33,7 @@ class Evaler:
                  infer_on_rect=False,
                  verbose=False,
                  do_coco_metric=True,
-                 do_pr_metric=False,
+                 do_pr_metric=True,
                  plot_curve=True,
                  plot_confusion_matrix=False,
                  specific_shape=False,
@@ -200,18 +200,71 @@ class Evaler:
                 from yolov6.utils.metrics import ap_per_class
                 p, r, ap, f1, ap_class = ap_per_class(*stats, plot=self.plot_curve, save_dir=self.save_dir, names=model.names)
                 AP50_F1_max_idx = len(f1.mean(0)) - f1.mean(0)[::-1].argmax() -1
-                LOGGER.info(f"IOU 50 best mF1 thershold near {AP50_F1_max_idx/1000.0}.")
+                best_conf_threshold = AP50_F1_max_idx / 1000.0
+                LOGGER.info(f"IOU 50 best mF1 thershold near {best_conf_threshold}.")
                 ap50, ap = ap[:, 0], ap.mean(1)  # AP@0.5, AP@0.5:0.95
                 mp, mr, map50, map = p[:, AP50_F1_max_idx].mean(), r[:, AP50_F1_max_idx].mean(), ap50.mean(), ap.mean()
+                mf1 = f1.mean(0)[AP50_F1_max_idx]
                 nt = np.bincount(stats[3].astype(np.int64), minlength=model.nc)  # number of targets per class
 
                 # Print results
                 s = ('%-16s' + '%12s' * 7) % ('Class', 'Images', 'Labels', 'P@.5iou', 'R@.5iou', 'F1@.5iou', 'mAP@.5', 'mAP@.5:.95')
                 LOGGER.info(s)
                 pf = '%-16s' + '%12i' * 2 + '%12.3g' * 5  # print format
-                LOGGER.info(pf % ('all', seen, nt.sum(), mp, mr, f1.mean(0)[AP50_F1_max_idx], map50, map))
+                LOGGER.info(pf % ('all', seen, nt.sum(), mp, mr, mf1, map50, map))
 
-                self.pr_metric_result = (map50, map)
+                # --- NEW BLOCK FOR FRUIT AND REST METRICS ---
+                fruit_p, fruit_r, fruit_f1, fruit_best_conf = 0.0, 0.0, 0.0, 0.0
+                rest_p, rest_r, rest_f1, rest_best_conf = mp, mr, mf1, best_conf_threshold
+
+                if isinstance(model.names, dict):
+                    names_list = list(model.names.values())
+                else:
+                    names_list = list(model.names)
+
+                # Check if 'fruit' exists in the class names
+                if 'fruit' in names_list:
+                    fruit_id = names_list.index('fruit')
+
+                    if fruit_id in ap_class:
+                        row_idx = np.where(ap_class == fruit_id)[0][0]
+                        fruit_f1_curve = f1[row_idx, :]
+                        fruit_max_idx = len(fruit_f1_curve) - fruit_f1_curve[::-1].argmax() - 1
+                        fruit_best_conf = fruit_max_idx / 1000.0
+                        fruit_p = p[row_idx, AP50_F1_max_idx]
+                        fruit_r = r[row_idx, AP50_F1_max_idx]
+                        fruit_f1 = f1[row_idx, AP50_F1_max_idx]
+
+                        rest_mask = np.ones(len(ap_class), dtype=bool)
+                        rest_mask[row_idx] = False
+
+                        if rest_mask.any():
+                            rest_f1_curve = f1[rest_mask, :].mean(0)
+                            rest_max_idx = len(rest_f1_curve) - rest_f1_curve[::-1].argmax() - 1
+                            rest_best_conf = rest_max_idx / 1000.0
+                            rest_p = p[rest_mask, AP50_F1_max_idx].mean()
+                            rest_r = r[rest_mask, AP50_F1_max_idx].mean()
+                            rest_f1 = f1[rest_mask, AP50_F1_max_idx].mean()
+                        else:
+                            rest_p, rest_r, rest_f1 = 0.0, 0.0, 0.0
+                class_metrics_dict = {}
+                for i, c in enumerate(ap_class):
+                    class_name = model.names[c]
+
+                    # Find the specific best confidence threshold for this class
+                    c_f1_curve = f1[i, :]
+                    c_max_idx = len(c_f1_curve) - c_f1_curve[::-1].argmax() - 1
+                    c_best_conf = c_max_idx / 1000.0
+
+                    # Use the class's OWN optimal index (c_max_idx) instead of the global one
+                    class_metrics_dict[class_name] = {
+                        'Precision': p[i, c_max_idx],
+                        'Recall': r[i, c_max_idx],
+                        'F1': f1[i, c_max_idx],
+                        'Best_Conf_Threshold': c_best_conf
+                    }
+
+                self.pr_metric_result = (map50, map, fruit_p, fruit_r, fruit_f1, rest_p, rest_r, rest_f1, best_conf_threshold, fruit_best_conf, rest_best_conf, class_metrics_dict)
 
                 # Print results per class
                 if self.verbose and model.nc > 1:
@@ -223,7 +276,7 @@ class Evaler:
                     confusion_matrix.plot(save_dir=self.save_dir, names=list(model.names))
             else:
                 LOGGER.info("Calculate metric failed, might check dataset.")
-                self.pr_metric_result = (0.0, 0.0)
+                self.pr_metric_result = (0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, {})
 
         return pred_results, vis_outputs, vis_paths
 
@@ -317,6 +370,11 @@ class Evaler:
             model.float()  # for training
             if task != 'train':
                 LOGGER.info(f"Results saved to {self.save_dir}")
+
+            if self.do_pr_metric:
+                _, _, fruit_p, fruit_r, fruit_f1, rest_p, rest_r, rest_f1, best_conf, fruit_best_conf, rest_best_conf, class_f1_dict = self.pr_metric_result
+                return (map50, map, fruit_p, fruit_r, fruit_f1, rest_p, rest_r, rest_f1, best_conf, fruit_best_conf, rest_best_conf, class_f1_dict)
+
             return (map50, map)
         return (0.0, 0.0)
 
